@@ -238,11 +238,14 @@ impl Session {
         let encrypted = {
             let mut local_context = self.local_context.lock().await;
 
-            if is_rtp {
-                local_context.encrypt_rtp(buf)?
-            } else {
-                local_context.encrypt_rtcp(buf)?
-            }
+            tokio::task::block_in_place(|| async {
+                if is_rtp {
+                    local_context.encrypt_rtp(buf)
+                } else {
+                    local_context.encrypt_rtcp(buf)
+                }
+            })
+            .await?
         };
 
         Ok(self.udp_tx.send(&encrypted).await?)
